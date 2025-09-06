@@ -3,8 +3,8 @@ export interface NewsDataType {
   title: string;
   link: string;
   keywords: string[];
-  creator: null;
-  video_url: null;
+  creator: string | null;
+  video_url: string | null;
   description: string;
   content: string;
   pubDate: string;
@@ -19,13 +19,13 @@ export interface NewsDataType {
   category: string[];
   ai_tag: string[];
   ai_region: string[];
-  ai_org: null;
+  ai_org: string | null;
   sentiment: string;
-  sentiment_stats: Sentimentstats;
+  sentiment_stats: SentimentStats;
   duplicate: boolean;
 }
 
-interface Sentimentstats {
+export interface SentimentStats {
   positive: number;
   neutral: number;
   negative: number;

@@ -4,29 +4,29 @@ import { TabBar } from '@/components/TabBar'
 
 const TabLayout = () => {
   return (
-    <Tabs tabBar={(props) => <TabBar {...props} />}>
+    <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{headerShown:false}}>
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Trang chủ",
         }}
       />
       <Tabs.Screen
         name="discover"
         options={{
-          title: "Discover",
+          title: "Khám phá",
         }}
       />
       <Tabs.Screen
         name="saved"
         options={{
-          title: "Saved",
+          title: "Đã lưu",
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: "Cài đặt",
         }}
       />
     </Tabs>

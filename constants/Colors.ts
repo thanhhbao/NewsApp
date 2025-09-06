@@ -8,4 +8,5 @@ export const Colors = {
   darkGrey: '#666',
   lightGrey: '#999',
   softText: '#555',
+  gray: "#a9a9a9",
 };
