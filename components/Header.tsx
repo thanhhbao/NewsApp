@@ -21,7 +21,7 @@ export default function Header() {
             {/* Chip nhiệt độ với glass effect */}
             <Pressable style={styles.glassChip}>
               <Ionicons name="sunny-outline" size={16} color="#F59E0B" />
-              <Text style={styles.chipText}>55°F</Text>
+              <Text style={styles.chipText}>25°C</Text>
               <Ionicons name="chevron-down" size={16} color="#6B7280" />
             </Pressable>
 

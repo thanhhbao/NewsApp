@@ -36,38 +36,37 @@ export default function BreakingNews({ newsList, loading }: Props) {
       <Text style={styles.title}>Xu hướng</Text>
 
       <FlatList
-        ref={listRef}
-        horizontal
-        data={newsList}
-        keyExtractor={(it) => String(it.article_id ?? it.link)}
-        renderItem={({ item }) => (
-          <Pressable style={styles.card} onPress={() => { /* open link */ }}>
-            <Image
-              source={{ uri: item.image_url || 'https://via.placeholder.com/800x450?text=No+Image' }}
-              style={styles.image}
-              resizeMode="cover"
-            />
-            <Text numberOfLines={2} style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.meta}>{item.source_name}</Text>
-          </Pressable>
-        )}
-        ItemSeparatorComponent={() => <View style={{ width: GAP }} />}
-        contentContainerStyle={{ paddingHorizontal: SIDE }}
-        showsHorizontalScrollIndicator={false}
-
-        // 👇 biến thành carousel mượt và “snap” theo từng card
-        snapToInterval={SNAP}
-        decelerationRate="fast"
-        snapToAlignment="start"
-        overScrollMode="never"
-        scrollEventThrottle={16}
-        onScroll={onScroll}
-        ListEmptyComponent={
-          <View style={{ padding: 16 }}>
-            <Text>{loading ? 'Đang tải…' : 'Chưa có dữ liệu'}</Text>
-          </View>
-        }
+  ref={listRef}
+  horizontal
+  data={newsList}
+  keyExtractor={(it, idx) => `${it.article_id || it.link || 'noid'}:${idx}`}  
+  renderItem={({ item }) => (
+    <Pressable style={styles.card} onPress={() => { /* open link */ }}>
+      <Image
+        source={{ uri: item.image_url || 'https://via.placeholder.com/800x450?text=No+Image' }}
+        style={styles.image}
+        resizeMode="cover"
       />
+      <Text numberOfLines={2} style={styles.cardTitle}>{item.title}</Text>
+      <Text style={styles.meta}>{item.source_name}</Text>
+    </Pressable>
+  )}
+  ItemSeparatorComponent={() => <View style={{ width: GAP }} />}
+  contentContainerStyle={{ paddingHorizontal: SIDE }}
+  showsHorizontalScrollIndicator={false}
+  snapToInterval={SNAP}
+  decelerationRate="fast"
+  snapToAlignment="start"
+  overScrollMode="never"
+  scrollEventThrottle={16}
+  onScroll={onScroll}
+  getItemLayout={(_, index) => ({ length: SNAP, offset: SNAP * index, index })}  // ✅
+  ListEmptyComponent={
+    <View style={{ padding: 16 }}>
+      <Text>{loading ? 'Đang tải…' : 'Chưa có dữ liệu'}</Text>
+    </View>
+  }
+/>
 
       {/* 👇 các chấm ở dưới */}
       {newsList.length > 1 && dots}

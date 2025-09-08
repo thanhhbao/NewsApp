@@ -1,6 +1,7 @@
 import React from 'react'
 import { Tabs } from 'expo-router'
 import { TabBar } from '@/components/TabBar'
+import 'react-native-reanimated';
 
 const TabLayout = () => {
   return (
