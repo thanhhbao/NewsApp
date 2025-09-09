@@ -1,4 +1,5 @@
 // components/Chips.tsx
+import { useAppTheme } from '@/providers/ThemeProvider';
 import React, { useMemo, useCallback } from 'react';
 import {
   FlatList, View, Text, Pressable,
@@ -72,40 +73,63 @@ export default function Chips<T>({
 
   const list = useMemo(() => dedupeBy(data, keyFn), [data, keyFn]);
 
-  const renderItem = useCallback(
-    ({ item, index }: { item: T; index: number }) => {
-      const k = keyFn(item);
-      const active = selectedKey === k;
-      return (
-        <Pressable
-          onPress={() => onChange?.(item, k)}
+  const { theme } = useAppTheme();
+
+const renderItem = useCallback(
+  ({ item }: { item: T; index: number }) => {
+    const k = keyFn(item);
+    const active = selectedKey === k;
+
+    return (
+      <Pressable
+        onPress={() => onChange?.(item, k)}
+        style={[
+          styles.chip,
+          // dùng màu theo theme thay vì màu cứng
+          {
+            backgroundColor: active ? theme.tint : theme.card,
+            borderColor: theme.hairline,
+          },
+          chipStyle,
+          active && styles.chipActive,      // nếu bạn có thêm hiệu ứng (scale, shadow…)
+          active && chipActiveStyle,
+          // ❗ bỏ hack marginLeft cho item đầu — hãy padding ở contentContainerStyle của FlatList
+        ]}
+        android_ripple={{
+          color: theme.name === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)',
+          borderless: false,
+        }}
+        accessibilityRole="button"
+        accessibilityState={{ selected: active }}
+        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+      >
+        <Text
           style={[
-            styles.chip,
-            chipStyle,
-            active && styles.chipActive,
-            active && chipActiveStyle,
-            index === 0 && { marginLeft: 0 },
+            styles.chipText,
+            // màu chữ theo theme
+            { color: active ? '#fff' : theme.text },
+            chipTextStyle,
+            active && styles.chipTextActive,
+            active && chipTextActiveStyle,
           ]}
-          android_ripple={{ color: '#eee' }}
-          accessibilityRole="button"
-          accessibilityState={{ selected: active }}
-          hitSlop={6}
         >
-          <Text
-            style={[
-              styles.chipText,
-              chipTextStyle,
-              active && styles.chipTextActive,
-              active && chipTextActiveStyle,
-            ]}
-          >
-            {labelFn(item)}
-          </Text>
-        </Pressable>
-      );
-    },
-    [onChange, selectedKey, chipStyle, chipActiveStyle, chipTextStyle, chipTextActiveStyle, keyFn, labelFn]
-  );
+          {labelFn(item)}
+        </Text>
+      </Pressable>
+    );
+  },
+  [
+    onChange,
+    selectedKey,
+    chipStyle,
+    chipActiveStyle,
+    chipTextStyle,
+    chipTextActiveStyle,
+    keyFn,
+    labelFn,
+    theme, // nhớ thêm theme vào deps để đổi màu khi toggle dark/light
+  ]
+);
 
   return (
     <FlatList
@@ -123,22 +147,18 @@ export default function Chips<T>({
 }
 
 const styles = StyleSheet.create({
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
+ chip: {
+  paddingHorizontal: 14,
+  paddingVertical: 8,
+  borderRadius: 18,
+  borderWidth: StyleSheet.hairlineWidth,
+  marginRight: 8,
+},
+chipText: { fontSize: 15, fontWeight: '700' },
+
   chipActive: {
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
-  },
-  chipText: {
-    color: '#374151',
-    fontWeight: '500',
-    fontSize: 14,
   },
   chipTextActive: {
     color: '#DC2626',

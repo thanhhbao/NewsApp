@@ -12,6 +12,6 @@ export const icon = {
   saved: ({ color, focused }: { color: string; focused: boolean }) =>
     <Ionicons name={focused ? "bookmarks" : "bookmarks-outline"} size={ICON_SIZE} color={color} />,
 
-  settings: ({ color, focused }: { color: string; focused: boolean }) =>
-    <Ionicons name={focused ? "settings" : "settings-outline"} size={ICON_SIZE} color={color} />,
+  profile: ({ color, focused }: { color: string; focused: boolean }) =>
+    <Ionicons name={focused ? "person" : "person-outline"} size={ICON_SIZE} color={color} />,
 };

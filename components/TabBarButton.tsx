@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, useColorScheme } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -8,14 +8,14 @@ import Animated, {
 } from "react-native-reanimated";
 import { useEffect, useMemo } from "react";
 import * as Haptics from "expo-haptics";
-import { Colors } from "@/constants/Colors";
 import { icon as IconMap } from "@/constants/Icons";
+import { useAppTheme } from "@/providers/ThemeProvider";
 
 interface TabBarButtonProps {
   onPress: () => void;
   onLongPress: () => void;
   isFocused: boolean;
-  routeName: "index" | "discover" | "saved" | "settings";
+  routeName: "index" | "discover" | "saved" | "profile";
   label: string;
 }
 
@@ -28,15 +28,21 @@ export default function TabBarButton({
   routeName,
   label,
 }: TabBarButtonProps) {
-  // Dùng đúng palette hiện có
-  const activeColor = Colors.tabIconSelected || Colors.tint;
-  const inactiveColor = Colors.tabIconDefault;
+  const { theme } = useAppTheme();
 
-  // Fallback icon renderer
+  // màu active & inactive theo theme
+  const activeColor = theme.tint;
+  const inactiveColor =
+    theme.name === "dark" ? "rgba(255,255,255,0.9)" : "rgba(17,24,39,0.9)";
+  const rippleColor =
+    theme.name === "dark" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.08)";
+
   const renderIcon = useMemo(() => {
     return (
       IconMap[routeName] ||
-      IconMap[(routeName as string).split("/").pop()?.toLowerCase() as keyof typeof IconMap] ||
+      IconMap[
+        (routeName as string).split("/").pop()?.toLowerCase() as keyof typeof IconMap
+      ] ||
       (IconMap as any).default ||
       IconMap.index
     );
@@ -69,7 +75,9 @@ export default function TabBarButton({
     scale.value = withSpring(isFocused ? 1.1 : 1, { damping: 14, stiffness: 180 });
   };
   const handlePress = async () => {
-    try { await Haptics.selectionAsync(); } catch {}
+    try {
+      await Haptics.selectionAsync();
+    } catch {}
     onPress();
   };
 
@@ -80,7 +88,7 @@ export default function TabBarButton({
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       style={styles.container}
-      android_ripple={{ color: "#eee", borderless: true }}
+      android_ripple={{ color: rippleColor, borderless: true }}
       accessibilityRole="button"
       accessibilityLabel={`${label} tab`}
       hitSlop={8}
@@ -104,7 +112,9 @@ export default function TabBarButton({
       </Animated.Text>
 
       {isFocused && (
-        <Animated.View style={[styles.activeDot, { backgroundColor: activeColor }]} />
+        <Animated.View
+          style={[styles.activeDot, { backgroundColor: activeColor }]}
+        />
       )}
     </AnimatedPressable>
   );
@@ -112,13 +122,27 @@ export default function TabBarButton({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, alignItems: "center", justifyContent: "center",
-    paddingVertical: 8, paddingHorizontal: 4, position: "relative",
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    position: "relative",
   },
   iconContainer: {
-    marginBottom: 4, alignItems: "center", justifyContent: "center",
-    width: 28, height: 28,
+    marginBottom: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    width: 28,
+    height: 28,
   },
   label: { fontSize: 12, fontWeight: "500", textAlign: "center", marginTop: 2 },
-  activeDot: { position: "absolute", bottom: -8, width: 4, height: 4, borderRadius: 2, opacity: 0.9 },
+  activeDot: {
+    position: "absolute",
+    bottom: -8,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.9,
+  },
 });
