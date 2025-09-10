@@ -1,7 +1,11 @@
 # NewsApp
 
 NewsApp is a modern mobile application built with React Native and TypeScript that delivers up-to-date news content from various sources. It is designed with a clean UI, smooth navigation, and efficient state management to provide a fast and seamless user experience.
-
+##
+<img src="./assets/images/splash.png" alt="Giao diện" width="500"/>
+<img src="./assets/images/home" alt="Giao diện" width="500"/>
+<img src="./assetsimages/saved" alt="Giao diện" width="500"/>
+<img src="./assetsimages/profile" alt="Giao diện" width="500"/>
 ## Features
 
 - Browse top headlines and breaking news
