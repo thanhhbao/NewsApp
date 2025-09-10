@@ -1,273 +1,447 @@
-import { Colors } from '@/constants/Colors';
-import { cateColor } from '@/constants/CateColors';
-import CategoryChips from '@/components/CategoryChips';
-import { fetchHeadlines, fetchTop, NewsCategory } from '@/services/newsAPI';
-import { NewsDataType } from '@/types';
-import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useState } from 'react';
+// app/(tabs)/discover.tsx
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   Image,
   SafeAreaView,
+  Dimensions,
   FlatList,
   Pressable,
+  TextInput,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/providers/ThemeProvider';
 
-/* =================== Tabs & mapping =================== */
-const CATEGORIES = ['all', 'politics', 'sports', 'education', 'world'] as const;
-type TabValue = typeof CATEGORIES[number];
+const { width } = Dimensions.get('window');
 
-const TAB_TO_API: Partial<Record<TabValue, NewsCategory>> = {
-  politics: 'politics',
-  sports: 'sports',
-  world: 'world',
-  education: 'science', // TheNewsAPI không có education
-};
+/* ========== Types ========== */
+type SegKey = 'people' | 'company' | 'days';
+type BubbleSize = 'large' | 'medium' | 'small';
 
-const FALLBACK_IMG =
-  'https://via.placeholder.com/600x400/EEF2F7/94A3B8?text=News';
-
-type UiNews = {
+type TrendingItem = {
   id: string;
-  category: string;
-  title: string;
-  author: string;
-  date: string;
+  name: string;
+  views: string;     // e.g. "12.4k views"
   image: string;
+  size: BubbleSize;
 };
 
-const uniqueById = <T extends { article_id?: string; link?: string }>(arr: T[]) => {
-  const seen = new Set<string>();
-  return arr.filter((a) => {
-    const k = String(a.article_id || a.link || '');
-    if (!k || seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
+type CategoryCard = {
+  id: string;
+  title: string;
+  color: string;
+  backgroundColor: string;
+  icon: keyof typeof Ionicons.glyphMap;
 };
 
-const DiscoverScreen = () => {
+/* ========== Mock (thay bằng dữ liệu thật nếu có) ========== */
+const SEGMENTS: { key: SegKey; label: string }[] = [
+  { key: 'people', label: 'People' },
+  { key: 'company', label: 'Company' },
+  { key: 'days', label: 'Days' },
+];
+
+const TRENDING_PEOPLE: TrendingItem[] = [
+  {
+    id: 'biden',
+    name: 'Joe Biden',
+    views: '12.4k views',
+    image:
+      'https://images.unsplash.com/photo-1556157382-97eda2d62296?w=800&q=80',
+    size: 'large',
+  },
+  {
+    id: 'trump',
+    name: 'D trump',
+    views: '10.4k views',
+    image:
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&q=80',
+    size: 'medium',
+  },
+  {
+    id: 'demi',
+    name: 'Demi lovato',
+    views: '8.4k views',
+    image:
+      'https://images.unsplash.com/photo-1494790108755-2616b612b789?w=800&q=80',
+    size: 'medium',
+  },
+  {
+    id: 'billie',
+    name: 'Billie Eilish',
+    views: '6.4k views',
+    image:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80',
+    size: 'medium',
+  },
+  {
+    id: 'elliot',
+    name: 'Elliot Page',
+    views: '3.4k views',
+    image:
+      'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=800&q=80',
+    size: 'small',
+  },
+  {
+    id: 'dua',
+    name: 'Dua Lipa',
+    views: '5.4k views',
+    image:
+      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=800&q=80',
+    size: 'small',
+  },
+];
+
+const CATEGORY_CARDS: CategoryCard[] = [
+  { id: 'business', title: 'Business', color: '#FB923C', backgroundColor: '#FFF4E6', icon: 'briefcase' },
+  { id: 'tech',     title: 'Tech',     color: '#22D3EE', backgroundColor: '#E0F2FE', icon: 'laptop' },
+  { id: 'sports',   title: 'Sports',   color: '#22C55E', backgroundColor: '#DCFCE7', icon: 'basketball' },
+  { id: 'ent',      title: 'Entertainment', color: '#A78BFA', backgroundColor: '#F3E8FF', icon: 'film' },
+];
+
+/* ========== Helpers ========== */
+const sizePx = (s: BubbleSize) =>
+  s === 'large' ? 140 : s === 'medium' ? 96 : 72;
+
+/* ========== Components ========== */
+function Segment({
+  value,
+  onChange,
+}: {
+  value: SegKey;
+  onChange: (k: SegKey) => void;
+}) {
   const { theme } = useAppTheme();
-  const insets = useSafeAreaInsets();
-
-  const [selected, setSelected] = useState<TabValue>('all');
-  const [loading, setLoading] = useState(false);
-  const [apiItems, setApiItems] = useState<NewsDataType[]>([]);
-
-  // tải dữ liệu khi đổi tab
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const cat = TAB_TO_API[selected];
-        const { items } = await fetchTop({
-          language: 'en',
-          limit: 20,
-          ...(cat ? { categories: [cat] } : {}),
-        });
-        if (!cancelled) setApiItems(items);
-      } catch {
-        try {
-          const { items } = await fetchHeadlines({
-            language: 'en',
-            headlinesPerCategory: 5,
-          });
-          const cat = TAB_TO_API[selected];
-          const filtered = cat
-            ? items.filter((a) =>
-                (a.category || []).some((c) =>
-                  String(c).toLowerCase().includes(String(cat))
-                )
-              )
-            : items;
-          if (!cancelled) setApiItems(filtered);
-        } catch {
-          if (!cancelled) setApiItems([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selected]);
-
-  // map về UI + lọc chắc chắn + loại trùng
-  const news: UiNews[] = useMemo(() => {
-    const token = selected === 'all' ? null : selected;
-    const filtered = token
-      ? apiItems.filter((a) =>
-          (a.category || []).some((c) =>
-            String(c).toLowerCase().includes(token)
-          )
-        )
-      : apiItems;
-
-    const clean = uniqueById(filtered);
-
-    return clean.map((a) => ({
-      id: String(a.article_id ?? a.link),
-      category: (a.category?.[0] || 'General').toLowerCase(),
-      title: a.title,
-      author:
-        (Array.isArray(a.creator) && a.creator[0]) || a.source_name || 'Unknown',
-      date: new Date(a.pubDate || Date.now()).toLocaleDateString('en-US', {
-        month: 'short',
-        day: '2-digit',
-        year: 'numeric',
-      }),
-      image: a.image_url || FALLBACK_IMG,
-    }));
-  }, [apiItems, selected]);
-
-  const renderNewsItem = ({ item }: { item: UiNews }) => {
-    const clr = cateColor(item.category); // { tint, text, border }
-    return (
-      <TouchableOpacity style={[styles.newsItem, { backgroundColor: theme.card }]} activeOpacity={0.85}>
-        <View style={[styles.imageWrap, { backgroundColor: theme.name === 'dark' ? '#1f2937' : '#ddd' }]}>
-          <Image source={{ uri: item.image }} style={styles.newsImage} />
-          {/* category pill góc phải-dưới (nền đậm, chữ trắng) */}
-          <View
-            style={[
-              styles.catPill,
-              { backgroundColor: `${clr.tint}E6`, borderColor: clr.border },
-            ]}
-          >
-            <Text style={[styles.catPillText, { color: clr.text }]}>
-              {item.category}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.newsContent}>
-          <Text style={[styles.newsTitle, { color: theme.text }]} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <View style={styles.authorInfo}>
-            <View style={[styles.authorAvatar, { backgroundColor: Colors.tabIconSelected }]}>
-              <Text style={styles.avatarText}>
-                {(item.author || 'A').charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <Text style={[styles.authorName, { color: theme.textSecondary }]}>{item.author}</Text>
-            <Text style={[styles.dateText, { color: theme.textSecondary }]}>• {item.date}</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const bottomPad = insets.bottom + 96; // tránh bị TabBar nổi đè
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomPad }}
-      >
-        {/* Header đơn giản */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Discover</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            News from all around the world
-          </Text>
-        </View>
-
-        {/* Search */}
-        <View style={styles.searchContainer}>
-          <View
+    <View
+      style={[
+        styles.segmentWrap,
+        { backgroundColor: theme.card, borderColor: theme.hairline },
+      ]}
+    >
+      {SEGMENTS.map((s) => {
+        const active = s.key === value;
+        return (
+          <TouchableOpacity
+            key={s.key}
+            onPress={() => onChange(s.key)}
+            activeOpacity={0.9}
             style={[
-              styles.glassSearchBar,
-              {
-                backgroundColor: theme.name === 'dark'
-                  ? 'rgba(30,41,59,0.55)'
-                  : 'rgba(255,255,255,0.7)',
-                borderColor: theme.hairline,
-                shadowOpacity: theme.name === 'dark' ? 0.04 : 0.08,
+              styles.segmentItem,
+              active && {
+                backgroundColor: theme.text,
+                shadowColor: '#000',
+                shadowOpacity: 0.12,
+                shadowRadius: 6,
+                shadowOffset: { width: 0, height: 3 },
+                elevation: 3,
               },
             ]}
           >
-            <Ionicons
-              name="search-outline"
-              size={20}
-              color={theme.textSecondary}
-              style={styles.searchIcon}
-            />
-            <TextInput
-              placeholder="Discover the latest news..."
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholderTextColor={theme.textSecondary}
-            />
-            <Pressable
+            <Text
               style={[
-                styles.filterBtn,
-                {
-                  backgroundColor:
-                    theme.name === 'dark'
-                      ? 'rgba(255,255,255,0.08)'
-                      : 'rgba(255,255,255,0.5)',
-                  borderColor: theme.hairline,
-                },
+                styles.segmentLabel,
+                { color: active ? theme.bg : theme.textSecondary },
               ]}
             >
-              <Ionicons name="options-outline" size={18} color={theme.textSecondary} />
-            </Pressable>
+              {s.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+function TrendingBubble({ item }: { item: TrendingItem }) {
+  const r = sizePx(item.size) / 2;
+  return (
+    <View
+      style={[
+        styles.bubble,
+        {
+          width: r * 2,
+          height: r * 2,
+          borderRadius: r,
+        },
+      ]}
+    >
+      <Image
+        source={{ uri: item.image }}
+        style={{ width: '100%', height: '100%', borderRadius: r }}
+      />
+      <View style={styles.bubbleOverlay}>
+        <Text
+          numberOfLines={1}
+          style={[styles.bubbleTitle, item.size === 'large' && { fontSize: 18 }]}
+        >
+          {item.name}
+        </Text>
+        <Text
+          style={[
+            styles.bubbleViews,
+            item.size === 'large' && { fontSize: 12 },
+          ]}
+        >
+          {item.views}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function CategoryItem({
+  card,
+  onPress,
+}: {
+  card: CategoryCard;
+  onPress: () => void;
+}) {
+  const { theme } = useAppTheme();
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={onPress}
+      style={[
+        styles.catCard,
+        {
+          backgroundColor: card.backgroundColor,
+          width: (width - 52) / 2,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.catIconWrap,
+          {
+            backgroundColor: card.color,
+          },
+        ]}
+      >
+        <Ionicons name={card.icon} size={40} color="#fff" />
+      </View>
+      <Text style={[styles.catTitle, { color: theme.text }]}>{card.title}</Text>
+    </TouchableOpacity>
+  );
+}
+
+/* ========== Screen ========== */
+export default function DiscoverScreen() {
+  const { theme } = useAppTheme();
+  const [tab, setTab] = useState<SegKey>('people');
+
+  // Nếu sau này có data theo từng tab, map theo tab ở đây
+  const trending = useMemo(() => TRENDING_PEOPLE, []);
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 28 }}
+      >
+        {/* Segmented */}
+        <View style={styles.searchContainer}>
+                        <View
+                          style={[
+                            styles.glassSearchBar,
+                            {
+                              backgroundColor: theme.name === 'dark'
+                                ? 'rgba(30,41,59,0.55)'
+                                : 'rgba(255,255,255,0.7)',
+                              borderColor: theme.hairline,
+                              shadowOpacity: theme.name === 'dark' ? 0.04 : 0.08,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="search-outline"
+                            size={20}
+                            color={theme.textSecondary}
+                            style={styles.searchIcon}
+                          />
+                          <TextInput
+                            placeholder="Discover the latest news..."
+                            style={[styles.searchInput, { color: theme.text }]}
+                            placeholderTextColor={theme.textSecondary}
+                          />
+                          <Pressable
+                            style={[
+                              styles.filterBtn,
+                              {
+                                backgroundColor:
+                                  theme.name === 'dark'
+                                    ? 'rgba(255,255,255,0.08)'
+                                    : 'rgba(255,255,255,0.5)',
+                                borderColor: theme.hairline,
+                              },
+                            ]}
+                          >
+                            <Ionicons name="options-outline" size={18} color={theme.textSecondary} />
+                          </Pressable>
+                        </View>
+                      </View>
+        <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+          <Segment value={tab} onChange={setTab} />
+        </View>
+
+        {/* Trending */}
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: theme.text, marginTop: 16, marginBottom: 12 },
+          ]}
+        >
+          Trending topic
+        </Text>
+
+        {/* Bố cục giống ảnh: 3 bubble trên, 1 lớn giữa, 2 nhỏ dưới */}
+        <View style={styles.trendingWrap}>
+          <View style={[styles.trRow, { justifyContent: 'space-between' }]}>
+            <TrendingBubble item={trending[1]} />
+            <TrendingBubble item={trending[2]} />
+            <TrendingBubble item={trending[3]} />
+          </View>
+
+          <View style={[styles.trRow, { justifyContent: 'center', marginTop: 12 }]}>
+            <TrendingBubble item={trending[0]} />
+          </View>
+
+          <View style={[styles.trRow, { justifyContent: 'space-between', marginTop: 12 }]}>
+            <TrendingBubble item={trending[4]} />
+            <TrendingBubble item={trending[5]} />
           </View>
         </View>
 
-        {/* CategoryChips thống nhất với Home */}
-        <CategoryChips
-          data={[...CATEGORIES] as unknown as string[]}   // tránh lỗi readonly tuple
-          selectedKey={selected}
-          onChange={(_, key) => setSelected(key as TabValue)}
-          itemGap={8}
-          style={{ marginBottom: 10 }}
-        />
+        {/* Explore by category */}
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: theme.text, marginTop: 8, marginBottom: 16 },
+          ]}
+        >
+          Explore by category
+        </Text>
 
-        {/* News List */}
-        <View style={[styles.newsList, { paddingHorizontal: 20 }]}>
-          {loading && news.length === 0 ? (
-            <Text style={{ color: theme.textSecondary, paddingVertical: 8 }}>Loading…</Text>
-          ) : null}
-          <FlatList
-            data={news}
-            keyExtractor={(it) => it.id}
-            renderItem={renderNewsItem}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            ListEmptyComponent={
-              !loading ? (
-                <Text style={{ color: theme.textSecondary }}>No data available</Text>
-              ) : null
-            }
-          />
-        </View>
+        <FlatList
+          data={CATEGORY_CARDS}
+          keyExtractor={(it) => it.id}
+          numColumns={2}
+          scrollEnabled={false}
+          columnWrapperStyle={{ paddingHorizontal: 20, justifyContent: 'space-between' }}
+          ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
+          renderItem={({ item }) => (
+            <CategoryItem card={item} onPress={() => { /* navigate/filter here */ }} />
+          )}
+        />
       </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
-export default DiscoverScreen;
-
-/* =================== Styles =================== */
+/* ========== Styles ========== */
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollView: { flex: 1 },
 
-  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
-  title: { fontSize: 32, fontWeight: 'bold' },
-  subtitle: { fontSize: 16 },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    paddingHorizontal: 20,
+  },
 
+  /* segmented */
+  segmentWrap: {
+    flexDirection: 'row',
+    borderRadius: 16,
+    padding: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  segmentItem: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  segmentLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  /* trending */
+  trendingWrap: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  trRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  bubble: {
+    overflow: 'hidden',
+    borderRadius: 999,
+    marginHorizontal: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  bubbleOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    paddingBottom: 10,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  bubbleTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  bubbleViews: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+
+  /* category */
+  catCard: {
+    height: 160,
+    borderRadius: 18,
+    padding: 18,
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  catIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+   searchIcon: { marginRight: 12 },
+  searchInput: { flex: 1, fontSize: 16, fontWeight: '500' },
+   filterBtn: {
+    padding: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginLeft: 8,
+  },
   searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
@@ -287,55 +461,4 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
-  filterBtn: {
-    padding: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginLeft: 8,
-  },
-  searchIcon: { marginRight: 12 },
-  searchInput: { flex: 1, fontSize: 16, fontWeight: '500' },
-
-  newsList: { paddingBottom: 20 },
-
-  newsItem: {
-    flexDirection: 'row',
-    borderRadius: 15,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  imageWrap: { width: 120, height: 120, overflow: 'hidden' },
-  newsImage: { width: '100%', height: '100%' },
-
-  catPill: {
-    position: 'absolute',
-    right: 8,
-    bottom: 8,
-    paddingHorizontal: 10,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  catPillText: { fontSize: 12, fontWeight: '700', textTransform: 'lowercase' },
-
-  newsContent: { flex: 1, padding: 12, justifyContent: 'space-between' },
-  newsTitle: { fontSize: 16, fontWeight: 'bold', lineHeight: 22 },
-  authorInfo: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
-  authorAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  avatarText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  authorName: { fontSize: 14, marginRight: 5 },
-  dateText: { fontSize: 14 },
 });

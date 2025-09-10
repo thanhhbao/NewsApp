@@ -53,7 +53,7 @@ const Page = () => {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      router.replace("/(tabs)");
+      router.replace("/home");
     });
   };
 
@@ -104,7 +104,7 @@ const Page = () => {
           >
             <Text style={styles.brandName}>TinMOI</Text>
             <View style={styles.brandUnderline} />
-            <Text style={styles.brandTagline}>Nền tảng tin tức chính thống</Text>
+            <Text style={styles.brandTagline}>Mainstream news platform</Text>
           </Animated.View>
         </Animated.View>
       </View>
@@ -131,7 +131,7 @@ const Page = () => {
           onPress={handleContinue}
           activeOpacity={0.9}
         >
-          <Text style={styles.buttonText}>Khám phá ngay</Text>
+          <Text style={styles.buttonText}>Discover Now</Text>
           <View style={styles.buttonIconContainer}>
             <Text style={styles.buttonIcon}>→</Text>
           </View>

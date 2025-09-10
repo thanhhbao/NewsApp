@@ -91,9 +91,9 @@ const renderItem = useCallback(
             borderColor: theme.hairline,
           },
           chipStyle,
-          active && styles.chipActive,      // nếu bạn có thêm hiệu ứng (scale, shadow…)
+          active && styles.chipActive,      
           active && chipActiveStyle,
-          // ❗ bỏ hack marginLeft cho item đầu — hãy padding ở contentContainerStyle của FlatList
+         
         ]}
         android_ripple={{
           color: theme.name === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)',
@@ -127,7 +127,7 @@ const renderItem = useCallback(
     chipTextActiveStyle,
     keyFn,
     labelFn,
-    theme, // nhớ thêm theme vào deps để đổi màu khi toggle dark/light
+    theme,
   ]
 );
 
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
 chipText: { fontSize: 15, fontWeight: '700' },
 
   chipActive: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#fab9b9ff',
     borderColor: '#FECACA',
   },
   chipTextActive: {

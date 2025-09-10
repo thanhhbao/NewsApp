@@ -20,12 +20,15 @@ const TabLayout = () => {
       
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
+      <Tabs.Screen name="home" options={{ title: 'Home' }} />
       <Tabs.Screen name="discover" options={{ title: 'Discover' }} />
       <Tabs.Screen name="saved" options={{ title: 'Saved' }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
+
+    
   );
+  
 };
 
 export default TabLayout;

@@ -1,6 +1,7 @@
 // services/newsAPI.ts
 import Constants from 'expo-constants';
 import { NewsDataType, SentimentStats } from '@/types';
+import { getJsonCached } from '@/utils/apiClients';
 
 const BASE = 'https://api.thenewsapi.com/v1';
 const TOKEN =
@@ -31,19 +32,23 @@ type Article = {
 type ListResponse = { data: Article[]; meta?: any };
 
 // ---------- helpers ----------
-async function getJSON(url: URL) {
+async function getJSON(url: URL, opts?: { force?: boolean; ttlMs?: number }) {
+  const TOKEN =
+    process.env.EXPO_PUBLIC_THENEWSAPI_TOKEN ??
+    (Constants.expoConfig?.extra as any)?.THE_NEWS_API_TOKEN ??
+    '';
+
   if (!TOKEN) {
     throw new Error('[TheNewsAPI] Thiếu token. Kiểm tra EXPO_PUBLIC_THENEWSAPI_TOKEN hoặc Constants.extra.');
   }
+
   url.searchParams.set('api_token', TOKEN);
 
-  const res = await fetch(url.toString());
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`[TheNewsAPI] HTTP ${res.status} – ${text}`);
-  }
-  try { return JSON.parse(text); }
-  catch { throw new Error('[TheNewsAPI] Parse JSON thất bại: ' + text); }
+  // 👇 gọi API qua lớp cache (mặc định TTL = 1 giờ)
+  return getJsonCached(url.toString(), undefined, {
+    ttlMs: opts?.ttlMs ?? 60 * 60 * 1000,  // 1 giờ
+    force: opts?.force ?? false,           // true = bỏ qua cache (pull-to-refresh)
+  });
 }
 
 function safeOrigin(u: string) {

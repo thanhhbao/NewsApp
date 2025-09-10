@@ -309,7 +309,7 @@ const ProfileScreen = () => {
                   <Text style={styles.badgeText}>Premium</Text>
                 </View>
                 <View style={[styles.badge, styles.streakBadge]}>
-                  <Text style={styles.badgeText}>🔥 {userStats.readingStreak} days</Text>
+                  <Text style={styles.badgeText}>{userStats.readingStreak} days</Text>
                 </View>
               </View>
             </View>

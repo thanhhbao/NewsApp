@@ -60,6 +60,91 @@ async function retryableFetch(
     clearTimeout(t);
   }
 }
+// utils/apiClient.ts (bổ sung)
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const ONE_HOUR = 60 * 60 * 1000;
+const CACHE_PREFIX = '@api_cache:';
+
+type CacheRecord<T = any> = {
+  ts: number;   // timestamp lưu (ms)
+  data: T;      // dữ liệu JSON
+};
+
+const hash = (s: string) => {
+  // djb2, ra key ngắn gọn
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+  return 'h' + (h >>> 0).toString(36);
+};
+
+const cacheKeyFor = (url: string, init?: Pick<RequestInit, 'headers'>) => {
+  // GET thường chỉ cần URL; nếu bạn muốn phân biệt theo header thì thêm vào đây
+  const sig = url; // + JSON.stringify(init?.headers ?? {});
+  return `${CACHE_PREFIX}${hash(sig)}`;
+};
+
+export async function getJsonCached<T = any>(
+  url: string,
+  init?: RequestInit & { timeout?: number },
+  opts?: {
+    ttlMs?: number;               // mặc định 1h
+    force?: boolean;              // true = bỏ qua cache, gọi API
+    allowStaleOnError?: boolean;  // nếu API lỗi, trả cache cũ nếu có
+  }
+): Promise<T> {
+  const { ttlMs = ONE_HOUR, force = false, allowStaleOnError = true } = opts ?? {};
+  const key = cacheKeyFor(url, init);
+
+  if (!force) {
+    try {
+      const raw = await AsyncStorage.getItem(key);
+      if (raw) {
+        const rec: CacheRecord<T> = JSON.parse(raw);
+        const fresh = Date.now() - rec.ts < ttlMs;
+        if (fresh) {
+          // ✅ cache còn hạn -> không gọi API
+          return rec.data;
+        }
+      }
+    } catch {
+      // nếu đọc cache lỗi thì bỏ qua, tiếp tục fetch
+    }
+  }
+
+  try {
+    const data = await getJson<T>(url, init);      // dùng hàm fetch hiện có của bạn
+    // lưu cache
+    const rec: CacheRecord<T> = { ts: Date.now(), data };
+    await AsyncStorage.setItem(key, JSON.stringify(rec));
+    return data;
+  } catch (e) {
+    // Nếu API lỗi nhưng có cache cũ, trả về cache (stale) cho đỡ gián đoạn
+    if (allowStaleOnError) {
+      const raw = await AsyncStorage.getItem(key).catch(() => null);
+      if (raw) {
+        try {
+          const rec: CacheRecord<T> = JSON.parse(raw);
+          return rec.data;
+        } catch {}
+      }
+    }
+    throw e;
+  }
+}
+
+// Tiện ích xóa cache (toàn bộ hoặc 1 URL)
+export async function clearApiCache(url?: string) {
+  if (url) {
+    const key = cacheKeyFor(url);
+    await AsyncStorage.removeItem(key);
+    return;
+  }
+  const keys = await AsyncStorage.getAllKeys();
+  const ours = keys.filter(k => k.startsWith(CACHE_PREFIX));
+  if (ours.length) await AsyncStorage.multiRemove(ours);
+}
+
 
 export async function getJson<T = any>(url: string, init?: RequestInit & { timeout?: number }): Promise<T> {
   const res = await retryableFetch(url, { method: 'GET', ...(init || {}) });
