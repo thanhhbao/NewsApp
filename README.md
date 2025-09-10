@@ -45,8 +45,8 @@ NewsApp is a modern mobile application built with React Native and TypeScript th
 1. Clone the repository:
 
 ```
-   git clone https://github.com/thanhhbao/NewsApp.git
-   cd NewsApp
+git clone https://github.com/thanhhbao/NewsApp.git
+cd NewsApp
 ```
 2. Install dependencies:
 ```
